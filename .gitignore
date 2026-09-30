@@ -1,0 +1,15 @@
+node_modules/
+dist/
+out/
+build/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.mp4
+*.mov
+*.webm
+.smoke-*/
+whisper.cpp
+*.log
+.remotion/

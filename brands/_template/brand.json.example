@@ -1,0 +1,24 @@
+{
+  "id": "mi-marca",
+  "officialName": "Mi Marca",
+  "neverCall": [],
+  "colors": {
+    "ink": "#111111",
+    "cream": "#F5F5F0",
+    "accent": "#3366FF"
+  },
+  "fonts": {
+    "display": "Fraunces",
+    "sans": "Outfit",
+    "mono": "JetBrains Mono"
+  },
+  "voice": {
+    "locale": "es-SV",
+    "register": "neutral",
+    "notes": "Describí tono y pronombres."
+  },
+  "anti": [
+    "Lista de lo que NO debe decir ni implicar el copy"
+  ],
+  "logoDir": "logo/"
+}

@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2018",
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "lib": ["es2015", "dom"],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "paths": {
+      "@eliseo-arevalo/motion-kit": ["../../packages/motion-kit/src/index.ts"],
+      "@eliseo-arevalo/motion-kit/*": ["../../packages/motion-kit/src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["remotion.config.ts"]
+}

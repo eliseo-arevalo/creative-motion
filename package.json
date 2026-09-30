@@ -1,0 +1,20 @@
+{
+  "name": "creative-motion",
+  "version": "0.1.0",
+  "description": "Kit público Remotion: motion-kit brand-agnostic + plantilla de brand + ejemplos",
+  "private": true,
+  "license": "UNLICENSED",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "dev": "npm run studio -w @eliseo-arevalo/demo-wipes",
+    "studio:demo-wipes": "npm run studio -w @eliseo-arevalo/demo-wipes",
+    "build:demo-wipes": "npm run build -w @eliseo-arevalo/demo-wipes",
+    "lint": "tsc -p packages/motion-kit && tsc -p examples/demo-wipes"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

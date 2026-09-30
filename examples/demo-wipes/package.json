@@ -1,0 +1,27 @@
+{
+  "name": "@eliseo-arevalo/demo-wipes",
+  "version": "0.1.0",
+  "description": "Ejemplo ficticio: SceneWipe kinds + Reveal/Sticker/Check (sin marca real)",
+  "private": true,
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@eliseo-arevalo/motion-kit": "*",
+    "@remotion/cli": "4.0.529",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.529"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "studio": "remotion studio",
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "render": "remotion render DemoWipes out/demo-wipes.mp4",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "sideEffects": ["*.css"]
+}
