@@ -1,8 +1,8 @@
 # creative-motion
 
-Kit público de motion Remotion: primitivas brand-agnostic, plantilla de brand kit y ejemplos ficticios.
+Kit público de motion Remotion: primitivas brand-agnostic (`motion-kit`), videos de usabilidad desde UI real (`screen-kit`), plantilla de brand kit y ejemplos ficticios.
 
-Las marcas reales (logos, tokens propietarios, recipes de cliente) viven en **repos privados** que dependen de `packages/motion-kit`.
+Las marcas reales (logos, tokens propietarios, recipes de cliente) viven en **repos privados** que dependen de `packages/motion-kit` y/o `packages/screen-kit`. Este repo tiene **solo herramientas genéricas**.
 
 ## Proceso (resumen)
 
@@ -13,15 +13,16 @@ Las marcas reales (logos, tokens propietarios, recipes de cliente) viven en **re
 5. **Feedback** — iterar en la recipe; el kit solo cambia si es reutilizable.
 6. **Commit / push** — según el flujo del repo.
 
-Detalle: [`docs/PROCESS.md`](docs/PROCESS.md) · Arquitectura: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+Detalle: [`docs/PROCESS.md`](docs/PROCESS.md) · Arquitectura: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · Videos de usabilidad: [`docs/USABILITY-VIDEOS.md`](docs/USABILITY-VIDEOS.md)
 
 ## Estructura
 
 ```
 packages/motion-kit/   # primitivas brand-agnostic (SceneWipe, Reveal, Sticker, Check…)
+packages/screen-kit/   # videos de usabilidad: captura Playwright + cámara/cursor/clics Remotion + lint narrativo
 brands/_template/      # plantilla genérica para nuevas marcas
-examples/              # demos públicos sin marca real (ej. demo-wipes)
-docs/                  # proceso y arquitectura
+examples/              # demos públicos sin marca real (demo-wipes, demo-usability)
+docs/                  # proceso, arquitectura y reglas de videos de usabilidad
 ```
 
 ## Reglas de diseño
@@ -35,8 +36,11 @@ docs/                  # proceso y arquitectura
 ```bash
 npm install
 npm run studio:demo-wipes
+
+# screen-kit: captura la primera web (archivo W3C) y renderiza ~11 s
+npm run capture:demo-usability && npm run render:demo-usability
 ```
 
 ## Remotion
 
-Versión alineada: **~4.0.x**.
+Versión alineada: **4.0.529** en todos los paquetes y ejemplos (React 19.2.3, Playwright 1.64.0 para `screen-kit`).

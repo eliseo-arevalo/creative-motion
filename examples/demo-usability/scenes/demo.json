@@ -1,0 +1,151 @@
+{
+  "id": "demo",
+  "title": "screen-kit demo \u00b7 first website (W3C archive): read, then one click",
+  "capture": {
+    "url": "https://www.w3.org/History/19921103-hypertext/hypertext/WWW/TheProject.html",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "deviceScaleFactor": 2,
+    "colorScheme": "light",
+    "reducedMotion": "no-preference",
+    "locale": "en-US",
+    "css": "body{max-width:44em;margin:72px auto;padding:0 32px;font:22px/1.55 Georgia,serif;color:#1d1d1f;background:#fff}h1{font:600 44px/1.2 system-ui,sans-serif}",
+    "assert": [
+      {
+        "js": "document.querySelector('h1')?.textContent.trim()",
+        "equals": "World Wide Web"
+      }
+    ],
+    "setup": [
+      {
+        "type": "waitForSelector",
+        "selector": "h1"
+      },
+      {
+        "type": "mouseMove",
+        "x": 4,
+        "y": 1076
+      },
+      {
+        "type": "wait",
+        "ms": 300
+      }
+    ],
+    "states": [
+      {
+        "name": "home",
+        "actions": []
+      },
+      {
+        "name": "dataSources",
+        "actions": [
+          {
+            "type": "click",
+            "selector": "a[href='../DataSources/Top.html']"
+          },
+          {
+            "type": "waitForSelector",
+            "selector": "h1"
+          }
+        ]
+      }
+    ],
+    "targets": {
+      "title": "h1",
+      "link": "a[href='../DataSources/Top.html']",
+      "page": "body"
+    },
+    "stateProbe": "(() => ({ path: location.pathname, h1: document.querySelector('h1')?.textContent.trim() }))()"
+  },
+  "composition": {
+    "fps": 30,
+    "durationInFrames": 345,
+    "background": "#ffffff",
+    "theme": {
+      "accent": "#2563EB",
+      "accentInk": "#ffffff"
+    },
+    "timeline": {
+      "pacing": "gentle",
+      "wideScale": 1.0,
+      "maxScale": 1.5,
+      "camera": [
+        {
+          "at": 0,
+          "to": "full"
+        },
+        {
+          "at": 30,
+          "transition": "ease",
+          "to": {
+            "rect": {
+              "x": 444,
+              "y": 60,
+              "width": 1032,
+              "height": 330
+            },
+            "padding": 30,
+            "maxScale": 1.5
+          },
+          "duration": 40,
+          "read": 8
+        },
+        {
+          "at": 258,
+          "transition": "ease",
+          "to": "full",
+          "duration": 40
+        }
+      ],
+      "states": [
+        {
+          "at": 0,
+          "name": "home"
+        },
+        {
+          "at": 198,
+          "name": "dataSources",
+          "crossfadeFrames": 1,
+          "result": "title"
+        }
+      ],
+      "cursors": [
+        {
+          "appearAt": 0,
+          "start": {
+            "x": 1500,
+            "y": 900
+          },
+          "moves": [
+            {
+              "at": 150,
+              "duration": 30,
+              "to": {
+                "target": "link"
+              }
+            }
+          ],
+          "clicks": [
+            196
+          ],
+          "hovers": [],
+          "drift": 2.5
+        }
+      ],
+      "callouts": [],
+      "keys": [],
+      "texts": [
+        {
+          "at": 300,
+          "text": "w3.org/History",
+          "x": 960,
+          "y": 1000,
+          "size": 36,
+          "weight": 500
+        }
+      ]
+    }
+  }
+}
