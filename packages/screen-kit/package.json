@@ -1,0 +1,40 @@
+{
+  "name": "@eliseo-arevalo/screen-kit",
+  "version": "0.1.0",
+  "description": "Usability / product-demo videos from real web UI: Playwright capture + Remotion camera, cursor, click frames, callouts and a narrative lint",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": ["src", "capture", "scripts", "README.md"],
+  "exports": {
+    ".": "./src/index.ts",
+    "./lint": "./scripts/lint.mjs",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "screen-kit-capture": "capture/capture.mjs",
+    "screen-kit-render": "scripts/render.mjs",
+    "screen-kit-lint": "scripts/lint.mjs"
+  },
+  "sideEffects": false,
+  "peerDependencies": {
+    "@remotion/cli": "^4.0.529",
+    "playwright": "^1.64.0",
+    "react": "^19.0.0",
+    "remotion": "^4.0.529"
+  },
+  "peerDependenciesMeta": {
+    "playwright": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "react": "19.2.3",
+    "remotion": "4.0.529",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

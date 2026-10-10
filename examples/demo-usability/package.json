@@ -1,0 +1,28 @@
+{
+  "name": "@eliseo-arevalo/demo-usability",
+  "version": "0.1.0",
+  "description": "Ejemplo mínimo de screen-kit: captura la primera web (archivo W3C) y renderiza ~11 s: zoom de lectura + un clic",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "@eliseo-arevalo/screen-kit": "*",
+    "@remotion/cli": "4.0.529",
+    "playwright": "1.64.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.529"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "capture": "screen-kit-capture scenes/demo.json --captures=captures --no-video",
+    "lint": "screen-kit-lint demo --captures=captures",
+    "render": "screen-kit-render demo --captures=captures",
+    "still": "screen-kit-render demo --captures=captures --still=205",
+    "studio": "remotion studio src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

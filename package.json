@@ -1,7 +1,7 @@
 {
   "name": "creative-motion",
   "version": "0.1.0",
-  "description": "Kit público Remotion: motion-kit brand-agnostic + plantilla de brand + ejemplos",
+  "description": "Kit público Remotion: motion-kit + screen-kit brand-agnostic + plantilla de brand + ejemplos",
   "private": true,
   "license": "UNLICENSED",
   "workspaces": [
@@ -12,7 +12,12 @@
     "dev": "npm run studio -w @eliseo-arevalo/demo-wipes",
     "studio:demo-wipes": "npm run studio -w @eliseo-arevalo/demo-wipes",
     "build:demo-wipes": "npm run build -w @eliseo-arevalo/demo-wipes",
-    "lint": "tsc -p packages/motion-kit && tsc -p examples/demo-wipes"
+    "lint": "tsc -p packages/motion-kit && tsc -p examples/demo-wipes && tsc -p packages/screen-kit && tsc -p examples/demo-usability",
+    "studio:demo-usability": "npm run studio -w @eliseo-arevalo/demo-usability",
+    "capture:demo-usability": "npm run capture -w @eliseo-arevalo/demo-usability --",
+    "render:demo-usability": "npm run render -w @eliseo-arevalo/demo-usability --",
+    "lint:demo-usability": "npm run lint -w @eliseo-arevalo/demo-usability",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "engines": {
     "node": ">=18"
