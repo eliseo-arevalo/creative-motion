@@ -38,6 +38,15 @@ export const Arm: React.FC<{ arm: ArmPose; p: Proportions; c: Palette; top: TopS
       )}
       <g transform={`translate(0 ${U}) rotate(${-arm.elbow})`}>
         <path d={capsule(F, w1, w2)} fill={c.skin} />
+        {arm.roll !== undefined && sf < 0.9 && (
+          /* Forearm roll cue: the shaded side of the forearm slides across as it turns. */
+          <path
+            d={capsule(F * 0.8, w1 * 0.34, w2 * 0.3)}
+            transform={`translate(${(Math.sin((arm.roll * Math.PI) / 180) * w1 * 0.26).toFixed(2)} ${F * 0.12})`}
+            fill={c.skinShade}
+            opacity={0.16}
+          />
+        )}
         {sf > 0 && (
           <>
             <path d={capsule(sf * F, w1 + 12, w2 + 12 + (1 - sf) * 6)} fill={top.color} />
@@ -45,7 +54,7 @@ export const Arm: React.FC<{ arm: ArmPose; p: Proportions; c: Palette; top: TopS
           </>
         )}
         <g transform={`translate(0 ${F}) rotate(${-arm.wrist})`}>
-          <Hand shape={arm.hand} from={arm.handFrom} mix={arm.handMix} c={c} size={p.hand} slot={slot} />
+          <Hand shape={arm.hand} from={arm.handFrom} mix={arm.handMix} c={c} size={p.hand} slot={slot} roll={arm.roll} mirror={arm.mirror} wristW={w2} />
           {debug && <circle r={5} fill="#E5484D" stroke="#fff" strokeWidth={2} />}
         </g>
         {debug && <circle r={6} fill="#E5484D" stroke="#fff" strokeWidth={2} />}

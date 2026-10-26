@@ -31,6 +31,8 @@ export const EXPRESSIONS: Record<ExpressionName, FaceParams> = {
   surprised: { ...NEUTRAL, browY: 13, browTilt: 0.25, lidTop: 0, eyeScale: 1.18, smile: 0, open: 0.62, round: 0.75, wide: -0.2, teeth: 0.2, blush: 0.35 },
   /** Thoughtful / a little worried: eyes up and to the side, inner brows raised (one a touch
       higher), lids open, mouth neutral and slightly pressed. Never a smirk or a squint. */
+  /** Angry / fed up: brows down and pulled together (V), glaring lids, corners down, lips pressed. */
+  angry: { ...NEUTRAL, browY: -6, browTilt: -1, lidTop: 0.3, lidBottom: 0.22, eyeScale: 0.96, smile: -0.7, wide: -0.08, pressed: 0.7, blush: 0.45 },
   thinking: { ...NEUTRAL, browY: 3, browTilt: 0.55, browAsym: 0.35, lidTop: 0.03, smile: -0.08, wide: -0.2, pressed: 0.12, mouthX: 2, gazeX: -6, gazeY: -6, blush: 0.2 },
 };
 

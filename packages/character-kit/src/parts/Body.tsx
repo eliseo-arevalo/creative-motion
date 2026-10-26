@@ -11,7 +11,8 @@ const mirrored = (start: P2, segs: Seg[], neckDip: number) => {
   let d = `M${f(start)}`;
   for (const [a, b, e] of segs) d += `C${f(a)} ${f(b)} ${f(e)}`;
   const last = segs[segs.length - 1][2];
-  d += `L${f(m(last))}`;
+  // Hem: a slight curve (cloth wraps round the hips), not a hard straight seam.
+  d += `Q0 ${last[1] + 7} ${f(m(last))}`;
   const pts: P2[] = [start, ...segs.map((s) => s[2])];
   for (let i = segs.length - 1; i >= 0; i--) {
     const [a, b] = segs[i];
@@ -97,6 +98,53 @@ export const Top: React.FC<{ p: Proportions; c: Palette; top: TopSpec }> = ({ p,
           <circle cx={0} cy={a + 68} r={3.5} fill={top.shade} />
         </>
       )}
+      {top.kind === "shirt" && <ShirtCollar a={a} N={N} color={top.color} line={top.trim ?? top.shade} tie={top.tie} placket={{ to: 36, step: 38 }} />}
+      {top.kind === "blazer" && <BlazerFront p={p} top={top} />}
+    </g>
+  );
+};
+
+/** A collared, button-up shirt's front: collar points, placket with buttons, optional tie. */
+const ShirtCollar: React.FC<{ a: number; N: number; color: string; line: string; tie?: string; placket?: { to: number; step: number } }> = ({ a, N, color, line, tie, placket }) => {
+  const flap = `M${-N - 14} ${a - 4}L-2 ${a + 26}L${-N + 2} ${a + 42}L${-N - 22} ${a + 14}Z`;
+  const buttons = placket ? Array.from({ length: Math.max(0, Math.floor((placket.to - (a + 54)) / placket.step) + 1) }, (_, i) => a + 54 + i * placket.step) : [];
+  return (
+    <g>
+      {placket && <path d={`M0 ${a + 26}V${placket.to}`} stroke={line} strokeWidth={3.5} strokeLinecap="round" opacity={0.8} />}
+      {!tie && buttons.map((y) => <circle key={y} cx={0} cy={y} r={3.6} fill={line} />)}
+      {tie && (
+        <g>
+          <path d={`M-9 ${a + 22}H9L6 ${a + 38}H-6Z`} fill={tie} />
+          <path d={`M-6 ${a + 36}L6 ${a + 36}L13 ${a + 150}L0 ${a + 168}L-13 ${a + 150}Z`} fill={tie} />
+          <path d={`M-6 ${a + 36}L6 ${a + 36}L13 ${a + 150}L0 ${a + 168}L-13 ${a + 150}Z`} fill="#000" opacity={0.12} transform="translate(3 0) scale(0.5 1)" />
+        </g>
+      )}
+      <path d={flap} fill={color} stroke={line} strokeWidth={3} strokeLinejoin="round" />
+      <path d={flap} fill={color} stroke={line} strokeWidth={3} strokeLinejoin="round" transform="scale(-1 1)" />
+    </g>
+  );
+};
+
+/** Blazer front: V opening showing the shirt (`inner`), notched lapels, buttons, pocket flaps. */
+const BlazerFront: React.FC<{ p: Proportions; top: TopSpec }> = ({ p, top }) => {
+  const a = -p.torso;
+  const N = p.neckHalf;
+  const S = p.shoulderHalf;
+  const wy = -p.torso * 0.36;
+  const vb = a + p.shoulderDrop + 128;
+  const inner = top.inner ?? "#F3F1EC";
+  const lapel = `M${-N - 9} ${a + 1}L-1 ${vb}L${-16} ${vb - 8}L${-N - 30} ${a + 72}L${-N - 44} ${a + 60}L${-N - 30} ${a + 34}L${-N - 24} ${a + 4}Z`;
+  return (
+    <g>
+      <path d={`M${-N - 10} ${a + 1}Q0 ${a + 14} ${N + 10} ${a + 1}L0 ${vb}Z`} fill={inner} />
+      <ShirtCollar a={a} N={N * 0.8} color={inner} line="#00000030" tie={top.tie} />
+      <path d={lapel} fill={top.color} stroke={top.shade} strokeWidth={3} strokeLinejoin="round" />
+      <path d={lapel} fill={top.color} stroke={top.shade} strokeWidth={3} strokeLinejoin="round" transform="scale(-1 1)" />
+      <path d={`M0 ${vb}V40`} stroke={top.shade} strokeWidth={3} strokeLinecap="round" />
+      {[vb + 26, vb + 66].map((y) => (
+        <circle key={y} cx={-7} cy={y} r={5} fill={top.trim ?? top.shade} />
+      ))}
+      <path d={`M${-S * 0.62} ${wy + 18}H${-S * 0.2}M${S * 0.2} ${wy + 18}H${S * 0.62}`} stroke={top.shade} strokeWidth={4} strokeLinecap="round" />
     </g>
   );
 };
@@ -107,25 +155,40 @@ export const Neck: React.FC<{ p: Proportions; c: Palette }> = ({ p, c }) => (
 );
 
 /** Skirt / pants block from the waist down, in hip space. Pants' legs are drawn by the legs. */
-export const Bottom: React.FC<{ p: Proportions; bottom: BottomSpec; sway: number }> = ({ p, bottom, sway }) => {
+/**
+ * `stride` 0…1 (walking: legs apart) flares a skirt's hem; `swing` −1…1 (the pelvis twist, a few
+ * frames late) swings it side to side. Both default 0 (the old skirt).
+ */
+export const Bottom: React.FC<{ p: Proportions; bottom: BottomSpec; sway: number; stride?: number; swing?: number }> = ({ p, bottom, sway, stride = 0, swing = 0 }) => {
   const wy = -p.torso * 0.36;
   const W = p.waistHalf;
   const H = p.hipHalf;
   if (bottom.kind === "skirt") {
     const len = p.thigh + 36;
+    // Hem corners: flare with the stride, and the swing pushes the whole hem one way (it lifts a bit on that side).
+    const fl = stride * 14;
+    const sx = swing * 12;
+    const R = { x: H + 34 + fl + sx, y: len - Math.max(0, swing) * 6 };
+    const Lc = { x: -H - 34 - fl + sx, y: len - Math.max(0, -swing) * 6 };
     return (
-      <g transform={`translate(0 ${wy}) skewX(${sway * 0.7}) translate(0 ${-wy})`}>
-        <path d={`M${-W - 2} ${wy}L${W + 2} ${wy}C${H + 6} ${-30} ${H + 26} ${len * 0.5} ${H + 34} ${len}Q0 ${len + 14} ${-H - 34} ${len}C${-H - 26} ${len * 0.5} ${-H - 6} ${-30} ${-W - 2} ${wy}Z`} fill={bottom.color} />
-        <path d={`M${H * 0.45} ${10}C${H * 0.7} ${len * 0.4} ${H + 10} ${len * 0.7} ${H + 26} ${len + 2}L${H + 34} ${len}C${H + 26} ${len * 0.5} ${H + 6} -30 ${W + 2} ${wy}Z`} fill={bottom.shade} opacity={0.5} />
+      <g transform={`translate(0 ${wy}) skewX(${sway * 0.7 + swing * 3}) translate(0 ${-wy})`}>
+        <path d={`M${-W - 2} ${wy}L${W + 2} ${wy}C${H + 6} ${-30} ${H + 26 + fl * 0.4} ${len * 0.5} ${R.x} ${R.y}Q${sx} ${len + 14 - stride * 4} ${Lc.x} ${Lc.y}C${-H - 26 - fl * 0.4} ${len * 0.5} ${-H - 6} ${-30} ${-W - 2} ${wy}Z`} fill={bottom.color} />
+        <path d={`M${H * 0.45} ${10}C${H * 0.7} ${len * 0.4} ${H + 10} ${len * 0.7} ${R.x - 8} ${R.y + 2}L${R.x} ${R.y}C${H + 26 + fl * 0.4} ${len * 0.5} ${H + 6} -30 ${W + 2} ${wy}Z`} fill={bottom.shade} opacity={0.5} />
         <path d={`M${-H * 0.3} 40Q${-H * 0.38} ${len * 0.6} ${-H * 0.5} ${len + 4}M${H * 0.15} 50Q${H * 0.2} ${len * 0.6} ${H * 0.25} ${len + 6}`} stroke={bottom.shade} strokeWidth={4} strokeLinecap="round" fill="none" opacity={0.6} />
       </g>
     );
   }
+  // Seat of the pants: inside the shirt's outline (never pokes out at the sides or the hem), then it
+  // narrows into the two legs, with the crotch between them.
+  const leg = p.legGap + p.legWidth[0] / 2 + 7;
+  const top = Math.max(-H + 6, -W + 4);
   return (
     <g>
-      <path d={`M${-W - 2} ${wy}L${W + 2} ${wy}C${H + 4} -20 ${H + 6} 20 ${H + 4} 60L${-H - 4} 60C${-H - 6} 20 ${-H - 4} -20 ${-W - 2} ${wy}Z`} fill={bottom.color} />
-      <path d={`M0 ${wy + 10}V56`} stroke={bottom.shade} strokeWidth={4} strokeLinecap="round" opacity={0.7} />
-      <path d={`M${-W - 2} ${wy + 4}H${W + 2}`} stroke={bottom.shade} strokeWidth={8} opacity={0.6} />
+      <path
+        d={`M${top} ${wy}L${-top} ${wy}C${H - 4} -20 ${H - 3} 24 ${H - 4} 46Q${H - 6} 66 ${leg} 82L${p.legGap * 0.35} 82Q0 62 ${-p.legGap * 0.35} 82L${-leg} 82Q${-H + 6} 66 ${-H + 4} 46C${-H + 3} 24 ${-H + 4} -20 ${top} ${wy}Z`}
+        fill={bottom.color}
+      />
+      <path d={`M0 46Q0 60 ${-p.legGap * 0.2} 72`} stroke={bottom.shade} strokeWidth={4} strokeLinecap="round" opacity={0.6} fill="none" />
     </g>
   );
 };

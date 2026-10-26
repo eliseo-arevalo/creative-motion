@@ -1,4 +1,5 @@
 import { clamp, deg, rad, wrap } from "./math";
+import { handRoll } from "./roll";
 import type { ArmPose, CharacterSpec, Pose, Proportions, Reach, ReachAnchor } from "./types";
 
 /** Canvas every character is drawn on (feet on GROUND, centred on x = 400). */
@@ -69,6 +70,8 @@ export const anchorPoint = (p: Proportions, side: 1 | -1, r: Reach, b: BodyFrame
         return { x: side * p.waistHalf * 0.35, y: 26 };
       case "hip":
         return { x: side * (p.hipHalf + 12), y: 6 };
+      case "torso":
+        return { x: 0, y: 0 };
       case "front":
       default:
         return { x: side * (p.shoulderHalf + p.upperArm * 0.55), y: -p.torso + p.shoulderDrop + p.upperArm * 0.8 };
@@ -84,6 +87,13 @@ export const anchorPoint = (p: Proportions, side: 1 | -1, r: Reach, b: BodyFrame
  * the pole side of the shoulder→wrist line (at most `hyper` degrees past straight).
  */
 export const ARM_LIMITS = { shoulder: [-80, 190] as const, elbowFlex: 152, hyper: 8, wrist: [-95, 95] as const };
+
+/**
+ * 2D elbow fold limit for an upper arm drawn at `upper` of its length. Foreshortened (elbow toward
+ * the camera, e.g. a hand on the cheek with the elbow down at the side) the projected fold looks
+ * sharper than the real one, so it may close further (up to 170°).
+ */
+export const elbowFlexOf = (upper = 1) => (upper >= 1 ? ARM_LIMITS.elbowFlex : Math.min(170, ARM_LIMITS.elbowFlex + 60 * (1 - upper)));
 
 /** Default elbow direction for a wrist at (u outward, v down) from the shoulder. */
 export const defaultPole = (u: number, v: number): [number, number] => {
@@ -115,11 +125,13 @@ export const elbowSide = (l1: number, l2: number, shoulder: number, elbow: numbe
 };
 
 /** Two-bone IK in shoulder space: the elbow goes to the pole side, the arm never stretches. */
-export const solveArmLocal = (l1: number, l2: number, u: number, v: number, pole?: [number, number], bendSign?: number) => {
+export const solveArmLocal = (l1: number, l2: number, u: number, v: number, pole?: [number, number], bendSign?: number, flex: number = ARM_LIMITS.elbowFlex) => {
   const pl = pole ?? defaultPole(u, v);
   // Closest the wrist can get at full elbow flex, so a too-close target never needs a fold past the limit.
-  const dMin = Math.sqrt(l1 * l1 + l2 * l2 - 2 * l1 * l2 * Math.cos(rad(180 - ARM_LIMITS.elbowFlex))) + 0.5;
-  const d = clamp(Math.hypot(u, v), dMin, l1 + l2 - 0.5);
+  const dMin = Math.sqrt(l1 * l1 + l2 * l2 - 2 * l1 * l2 * Math.cos(rad(180 - flex))) + 0.5;
+  // Partway through a fold change the forearm points at the camera, so the wrist can come closer.
+  const partial = bendSign !== undefined && Math.abs(bendSign) < 0.999;
+  const d = clamp(Math.hypot(u, v), partial ? Math.max(0.5, dMin * Math.abs(bendSign!)) : dMin, l1 + l2 - 0.5);
   const phi = Math.atan2(u, v);
   const alpha = Math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1));
   const tu = Math.sin(phi) * d;
@@ -182,7 +194,7 @@ export const limitShoulder = (a: number) => {
 /** Two-bone IK for one arm toward a torso-space target (kept for callers of stage 1). */
 export const solveArm = (p: Proportions, side: 1 | -1, target: { x: number; y: number }, _bend: 1 | -1 = 1, upper = 1, pole?: [number, number], shrug = 0) => {
   const s = shoulderAt(p, side, shrug);
-  return solveArmLocal(p.upperArm * upper, p.foreArm, side * (target.x - s.x), target.y - s.y, pole);
+  return solveArmLocal(p.upperArm * upper, p.foreArm, side * (target.x - s.x), target.y - s.y, pole, undefined, elbowFlexOf(upper));
 };
 
 /** Clamp an arm to the joint limits (shoulder range, one-way elbow, wrist range). */
@@ -192,7 +204,8 @@ export const limitArm = (p: Proportions, a: ArmPose): ArmPose => {
   // Foreshortened (elbow toward the camera): the 2D shoulder angle is free.
   const fs = a.bendSign !== undefined && Math.abs(a.bendSign) < 0.999;
   const shoulder = fs ? wrap(a.shoulder) : limitShoulder(a.shoulder);
-  let elbow = clamp(wrap(a.elbow), -ARM_LIMITS.elbowFlex, ARM_LIMITS.elbowFlex);
+  const flex = elbowFlexOf(a.upper);
+  let elbow = clamp(wrap(a.elbow), -flex, flex);
   const { wrist: w } = armPoints(l1, l2, shoulder, elbow);
   const pole = a.pole ?? defaultPole(w.u, w.v);
   if (a.bendSign !== undefined) {
@@ -259,7 +272,12 @@ export const forward = (spec: CharacterSpec, pose: Pose) => {
     m = mul(m, R(-a.wrist));
     const grip = apply(m, 0, p.hand * 0.52);
     const worldAngle = -(side * (a.shoulder + a.elbow + a.wrist)) + pose.lean + pose.torso;
-    return { elbow, wrist, grip, worldAngle };
+    const k = p.hand / 82;
+    const sx = handRoll(a.hand, a.handFrom, a.handMix, a.roll, a.mirror).sx;
+    const hm = m;
+    /** Canvas position of a point in hand-model space (82-px hand, as in HAND_MODELS), roll applied. */
+    const point = (x: number, y: number) => apply(hm, x * k * sx, y * k);
+    return { elbow, wrist, grip, worldAngle, point };
   };
   const head = mul(mul(mul(mul(torso, T(0, -p.torso - pose.shrug * 0.3)), R(pose.neck)), T(0, -p.neck)), R(pose.head));
   return { armL: arm(-1, pose.armL), armR: arm(1, pose.armR), head: apply(head, 0, -headCenterY(p)) };

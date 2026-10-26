@@ -15,6 +15,9 @@ const facePath = (shape: HeadSpec["shape"], { rx, ry, cy }: G) => {
   return `M${-r} ${cy}A${r} ${v} 0 1 0 ${r} ${cy}A${r} ${v} 0 1 0 ${-r} ${cy}Z`;
 };
 
+/** A low bun sits at the nape, off to the right; on a turn it goes round to the back of the head. */
+const lowBunX = (rx: number, yaw: number) => (yaw <= 0 ? rx * (0.86 - 0.21 * yaw) : rx * (0.86 - 1.76 * clamp01(yaw)));
+
 /** Hair behind the head (bun, nape, back of a bob). */
 const HairBack: React.FC<{ hair: HairSpec; g: G; yaw?: number }> = ({ hair, g: { rx, ry, cy }, yaw = 0 }) => {
   const bx = -yaw * rx * 0.42; // buns / ponytails swing to the back of the head
@@ -31,13 +34,17 @@ const HairBack: React.FC<{ hair: HairSpec; g: G; yaw?: number }> = ({ hair, g: {
     case "lowBun":
       return (
         <>
-          <circle cx={rx * 0.86 + bx * 0.5} cy={cy + ry * 0.32} r={rx * 0.36} fill={hair.color} />
-          <circle cx={rx * 0.86 + bx * 0.5} cy={cy + ry * 0.32} r={rx * 0.2} fill="none" stroke={hair.shade} strokeWidth={4} />
+          <circle cx={lowBunX(rx, yaw)} cy={cy + ry * 0.32} r={rx * 0.36} fill={hair.color} />
+          <circle cx={lowBunX(rx, yaw)} cy={cy + ry * 0.32} r={rx * 0.2} fill="none" stroke={hair.shade} strokeWidth={4} />
           <path d={back} fill={hair.color} transform={`translate(0 ${-ry * 0.12}) scale(1 0.92)`} />
         </>
       );
     case "bob":
-      return <path d={`M${-rx - 14} ${cy}C${-rx - 18} ${cy - ry * 1.1} ${rx + 18} ${cy - ry * 1.1} ${rx + 14} ${cy}L${rx + 18} ${cy + ry * 0.75}H${-rx - 18}Z`} fill={hair.color} />;
+      return <path d={`M${-rx - 14} ${cy}C${-rx - 18} ${cy - ry * 1.46} ${rx + 18} ${cy - ry * 1.46} ${rx + 14} ${cy}L${rx + 18} ${cy + ry * 0.75}H${-rx - 18}Z`} fill={hair.color} />;
+    case "long":
+      return <path d={`M${-rx - 14} ${cy}C${-rx - 20} ${cy - ry * 1.46} ${rx + 20} ${cy - ry * 1.46} ${rx + 14} ${cy}L${rx + 20} ${cy + ry * 1.05}H${-rx - 20}Z`} fill={hair.color} />;
+    case "ponytail":
+      return <path d={back} fill={hair.color} transform={`translate(0 ${-ry * 0.1}) scale(1 0.95)`} />;
     case "curly":
       return (
         <>
@@ -48,8 +55,76 @@ const HairBack: React.FC<{ hair: HairSpec; g: G; yaw?: number }> = ({ hair, g: {
         </>
       );
     case "short":
-      return <path d={`M${-rx - 4} ${cy + 4}C${-rx - 10} ${cy - ry * 1.08} ${rx + 10} ${cy - ry * 1.08} ${rx + 4} ${cy + 4}Z`} fill={hair.color} />;
+      return <path d={`M${-rx - 4} ${cy + 4}C${-rx - 10} ${cy - ry * 1.42} ${rx + 10} ${cy - ry * 1.42} ${rx + 4} ${cy + 4}Z`} fill={hair.color} />;
   }
+};
+
+/**
+ * Hair that hangs behind the body (long hair's mass, a ponytail's tail), in head space. Drawn by
+ * Character behind the torso and arms, with the head's transform. Nothing for other hair kinds.
+ */
+export const HairBehind: React.FC<{ p: Proportions; hair: HairSpec; yaw?: number; hairLag: number; swing?: number }> = ({ p, hair, yaw = 0, hairLag, swing = 0 }) => {
+  const rx = p.headRx;
+  const ry = p.headRy;
+  const cy = -ry * 0.9;
+  if (hair.kind === "long") {
+    const sx = -yaw * rx * 0.12;
+    return (
+      <g transform={`rotate(${hairLag * 0.6} 0 ${cy}) translate(${sx} 0)`}>
+        <path
+          d={`M${-rx - 14} ${cy}C${-rx - 26} ${cy + ry} ${-rx - 30} ${cy + ry * 1.9} ${-rx - 18} ${cy + ry * 2.35}Q0 ${cy + ry * 2.55} ${rx + 18} ${cy + ry * 2.35}C${rx + 30} ${cy + ry * 1.9} ${rx + 26} ${cy + ry} ${rx + 14} ${cy}Z`}
+          fill={hair.color}
+        />
+        <path d={`M${-rx * 0.5} ${cy + ry * 1.2}Q${-rx * 0.55} ${cy + ry * 1.9} ${-rx * 0.4} ${cy + ry * 2.3}M${rx * 0.5} ${cy + ry * 1.2}Q${rx * 0.55} ${cy + ry * 1.9} ${rx * 0.4} ${cy + ry * 2.3}`} stroke={hair.shade} strokeWidth={5} strokeLinecap="round" fill="none" />
+      </g>
+    );
+  }
+  if (hair.kind === "ponytail") {
+    // Tied at the back, a little to the right; it swings with the head (lag) and to the back on a turn.
+    // Facing right (yaw > 0) the tie goes round to the left (the back of the head) and the tail flips
+    // to hang on that side (a continuous squash through 0, no pop).
+    const tx = yaw <= 0 ? rx * (0.52 - 0.25 * yaw) : rx * (0.52 - 1.3 * clamp01(yaw));
+    const ty = cy - ry * 0.5;
+    const flip = yaw <= 0 ? 1 : 1 - 2 * clamp01(yaw / 0.6);
+    const a = hairLag * 2.2 + swing - yaw * 14;
+    return (
+      <g transform={`translate(${tx} ${ty}) scale(${flip} 1) rotate(${a * flip})`}>
+        <path d={`M-16 -8C${rx * 0.72} ${ry * 0.1} ${rx * 0.8} ${ry * 1.1} ${rx * 0.34} ${ry * 1.75}C${rx * 0.36} ${ry * 1.15} ${rx * 0.08} ${ry * 0.55} -10 ${ry * 0.28}Z`} fill={hair.color} />
+        <path d={`M${rx * 0.12} ${ry * 0.3}Q${rx * 0.5} ${ry * 0.8} ${rx * 0.42} ${ry * 1.4}`} stroke={hair.shade} strokeWidth={4} strokeLinecap="round" fill="none" />
+        <ellipse cx={-4} cy={2} rx={11} ry={8} fill={hair.shade} />
+      </g>
+    );
+  }
+  return null;
+};
+
+/**
+ * Back of the head in a 3/4 turn: the skull's far-from-the-face side is hair, from the crown down past
+ * the ear to the nape. A crescent along the skull outline whose width grows with |yaw| (nothing at 0),
+ * drawn over the face shape so no skin shows where the back of the head is.
+ */
+export const hairCapPath = (shape: HeadSpec["shape"], { rx, ry, cy }: G, yaw: number) => {
+  const w = clamp01(Math.abs(yaw));
+  if (w < 0.01) return null;
+  const b = yaw > 0 ? -1 : 1;
+  const R = rx * (shape === "round" ? 1.05 : 1) + 3;
+  const V = ry * (shape === "round" ? 0.96 : shape === "soft" ? 1.05 : 1) + 3;
+  const n = 18;
+  const end = (108 * Math.PI) / 180;
+  const pts: string[] = [];
+  const inner: string[] = [];
+  const t0 = -0.35; // a little past the top, onto the facing side: the crown is hair too
+  for (let i = 0; i <= n; i++) {
+    const t = t0 + (i / n) * (end - t0);
+    const x = b * R * Math.sin(t);
+    const y = cy - V * Math.cos(t);
+    pts.push(`${x.toFixed(1)} ${y.toFixed(1)}`);
+    // Hairline: rounds over the crown, a sideburn in front of the ear, back up at the nape.
+    const m = w * (0.5 + 0.08 * Math.sin(t * 2)) * clamp01(t / 0.5);
+    const yy = y + w * (7 * clamp01((t - t0) / 0.35) + 4 * Math.max(0, Math.sin(t)));
+    inner.unshift(`${(x * (1 - m)).toFixed(1)} ${yy.toFixed(1)}`);
+  }
+  return `M${pts.join("L")}L${inner.join("L")}Z`;
 };
 
 /** Hair over the forehead (fringe / hairline). `shift` follows the head turn a little. */
@@ -67,9 +142,10 @@ const HairFront: React.FC<{ hair: HairSpec; g: G; shift: number }> = ({ hair, g:
         </g>
       );
     case "lowBun":
+    case "ponytail":
       return (
         <g transform={`translate(${s} 0)`}>
-          <path d={`M${-rx + 2} ${cy - ry * 0.02}C${-rx - 8} ${cy - ry * 1.04} ${rx + 8} ${cy - ry * 1.04} ${rx - 2} ${cy - ry * 0.02}C${rx * 0.65} ${cy - ry * 0.45} ${rx * 0.2} ${cy - ry * 0.62} 0 ${cy - ry * 0.72}C${-rx * 0.2} ${cy - ry * 0.62} ${-rx * 0.65} ${cy - ry * 0.45} ${-rx + 2} ${cy - ry * 0.02}Z`} fill={hair.color} />
+          <path d={`M${-rx + 2} ${cy - ry * 0.02}C${-rx - 8} ${cy - ry * 1.4} ${rx + 8} ${cy - ry * 1.4} ${rx - 2} ${cy - ry * 0.02}C${rx * 0.65} ${cy - ry * 0.45} ${rx * 0.2} ${cy - ry * 0.62} 0 ${cy - ry * 0.72}C${-rx * 0.2} ${cy - ry * 0.62} ${-rx * 0.65} ${cy - ry * 0.45} ${-rx + 2} ${cy - ry * 0.02}Z`} fill={hair.color} />
           <path d={`M${-rx * 0.2} ${cy - ry * 0.86}Q${-rx * 0.55} ${cy - ry * 0.7} ${-rx * 0.72} ${cy - ry * 0.36}M${rx * 0.2} ${cy - ry * 0.86}Q${rx * 0.55} ${cy - ry * 0.7} ${rx * 0.72} ${cy - ry * 0.36}`} stroke={hair.shade} strokeWidth={4} strokeLinecap="round" fill="none" />
         </g>
       );
@@ -77,16 +153,32 @@ const HairFront: React.FC<{ hair: HairSpec; g: G; shift: number }> = ({ hair, g:
     case "curly":
       return (
         <g transform={`translate(${s} 0)`}>
-          <path d={`M${-rx + 1} ${cy - ry * 0.05}C${-rx - 6} ${cy - ry * 1.06} ${rx + 6} ${cy - ry * 1.06} ${rx - 1} ${cy - ry * 0.05}L${rx - 9} ${cy - ry * 0.3}C${rx * 0.5} ${cy - ry * 0.56} ${-rx * 0.15} ${cy - ry * 0.6} ${-rx * 0.58} ${cy - ry * 0.46}L${-rx + 9} ${cy - ry * 0.3}Z`} fill={hair.color} />
+          <path d={`M${-rx + 1} ${cy - ry * 0.05}C${-rx - 6} ${cy - ry * 1.4} ${rx + 6} ${cy - ry * 1.4} ${rx - 1} ${cy - ry * 0.05}L${rx - 9} ${cy - ry * 0.3}C${rx * 0.5} ${cy - ry * 0.56} ${-rx * 0.15} ${cy - ry * 0.6} ${-rx * 0.58} ${cy - ry * 0.46}L${-rx + 9} ${cy - ry * 0.3}Z`} fill={hair.color} />
           <path d={`M${-rx * 0.3} ${cy - ry * 0.8}Q${rx * 0.2} ${cy - ry * 0.92} ${rx * 0.62} ${cy - ry * 0.66}`} stroke={hair.shine ?? hair.shade} strokeWidth={4} strokeLinecap="round" fill="none" />
         </g>
       );
     case "bob":
       return (
         <g transform={`translate(${s} 0)`}>
-          <path d={`M${-rx - 2} ${cy + ry * 0.1}C${-rx - 8} ${cy - ry * 1.06} ${rx + 8} ${cy - ry * 1.06} ${rx + 2} ${cy + ry * 0.1}C${rx * 0.6} ${cy - ry * 0.42} ${-rx * 0.6} ${cy - ry * 0.42} ${-rx - 2} ${cy + ry * 0.1}Z`} fill={hair.color} />
+          <path d={`M${-rx - 2} ${cy + ry * 0.1}C${-rx - 8} ${cy - ry * 1.42} ${rx + 8} ${cy - ry * 1.42} ${rx + 2} ${cy + ry * 0.1}C${rx * 0.6} ${cy - ry * 0.42} ${-rx * 0.6} ${cy - ry * 0.42} ${-rx - 2} ${cy + ry * 0.1}Z`} fill={hair.color} />
         </g>
       );
+    case "long": {
+      // Side part, then two locks falling past the jaw onto the shoulders (in front of the top).
+      const lock = `M${rx - 10} ${cy - ry * 0.42}C${rx + 16} ${cy - ry * 0.1} ${rx + 18} ${cy + ry * 0.8} ${rx + 24} ${cy + ry * 1.62}Q${rx + 6} ${cy + ry * 1.76} ${rx * 0.7} ${cy + ry * 1.58}C${rx * 0.86} ${cy + ry * 1.0} ${rx * 0.92} ${cy + ry * 0.36} ${rx - 10} ${cy - ry * 0.42}Z`;
+      return (
+        <g transform={`translate(${s} 0)`}>
+          <path d={lock} fill={hair.color} />
+          <path d={lock} fill={hair.color} transform="scale(-1 1)" />
+          <path d={`M${rx + 4} ${cy + ry * 0.2}Q${rx + 10} ${cy + ry * 0.9} ${rx + 12} ${cy + ry * 1.45}M${-rx - 4} ${cy + ry * 0.2}Q${-rx - 10} ${cy + ry * 0.9} ${-rx - 12} ${cy + ry * 1.45}`} stroke={hair.shade} strokeWidth={4} strokeLinecap="round" fill="none" opacity={0.7} />
+          <path
+            d={`M${-rx - 3} ${cy + ry * 0.12}C${-rx - 8} ${cy - ry * 1.42} ${rx + 8} ${cy - ry * 1.42} ${rx + 3} ${cy + ry * 0.12}C${rx * 0.78} ${cy - ry * 0.32} ${rx * 0.2} ${cy - ry * 0.6} ${-rx * 0.22} ${cy - ry * 0.7}C${-rx * 0.5} ${cy - ry * 0.48} ${-rx * 0.8} ${cy - ry * 0.2} ${-rx - 3} ${cy + ry * 0.12}Z`}
+            fill={hair.color}
+          />
+          <path d={`M${-rx * 0.15} ${cy - ry * 0.86}Q${rx * 0.35} ${cy - ry * 0.86} ${rx * 0.7} ${cy - ry * 0.5}`} stroke={hair.shine ?? hair.shade} strokeWidth={5} strokeLinecap="round" fill="none" />
+        </g>
+      );
+    }
   }
 };
 
@@ -179,6 +271,20 @@ export const Head: React.FC<{ p: Proportions; c: Palette; head: HeadSpec; hair: 
       <path d={facePath(head.shape, g)} fill={c.skin} />
       {/* Jaw shade on the side away from the light. */}
       <path d={`M${rx * 0.2} ${cy + ry * 0.92}Q${rx * 0.85} ${cy + ry * 0.7} ${rx * 0.98} ${cy + ry * 0.1}Q${rx * 0.9} ${cy + ry * 0.62} ${rx * 0.2} ${cy + ry * 0.92}Z`} fill={c.skinShade} opacity={0.35} />
+      {(() => {
+        // The near ear sits over the back-of-head hair (in front of it, a little toward the cheek).
+        const d = hairCapPath(head.shape, g, yaw);
+        if (!d) return null;
+        const sd = yaw > 0 ? -1 : 1;
+        const x = sd * rx * 0.97 + Math.max(0, -sd * turn) * 0.5 * sd * -1 - sd * ay * rx * 0.05 - faceShift + -sd * ay * rx * 0.16;
+        return (
+          <>
+            <path d={d} fill={hair.color} />
+            <ellipse cx={x} cy={cy + 8} rx={13} ry={19} fill={c.skinShade} opacity={clamp01((ay - 0.05) * 6)} />
+            <ellipse cx={x + sd * 3} cy={cy + 8} rx={6} ry={10} fill={c.skinDeep} opacity={clamp01((ay - 0.05) * 6) * 0.35} />
+          </>
+        );
+      })()}
       {ear &&
         [-1, 1].map((sd) => {
           const far = sd * yaw > 0;
@@ -232,7 +338,8 @@ export const Head: React.FC<{ p: Proportions; c: Palette; head: HeadSpec; hair: 
           const xi = x - sd * 11 * bs;
           const xo = x + sd * 13 * bs;
           // Worry flattens the arch into a slanted line (inner end up).
-          const arch = Math.min(inner, outer) - 5 * (1 - clamp01(f.browTilt) * 0.8);
+          // Anger (strong negative tilt) also straightens it: a hard line down to the nose.
+          const arch = Math.min(inner, outer) - 5 * (1 - clamp01(f.browTilt) * 0.8) * (1 - clamp01((-f.browTilt - 0.3) / 0.7) * 0.85);
           return <path key={sd} d={`M${xi} ${inner}Q${x} ${arch} ${xo} ${outer}`} stroke={c.ink} strokeWidth={bw} strokeLinecap="round" fill="none" />;
         })}
 

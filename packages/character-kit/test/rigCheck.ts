@@ -1,9 +1,11 @@
 /**
  * Frame-by-frame rig checks (run by rig.test.mjs). Samples every clip transition and reports:
  * joint limits, inverted elbows, stretched arms, hands / forearms inside the head oval outside
- * an intended contact, wrist pops between frames and arm layer flicker.
+ * an intended contact, wrist pops between frames and arm layer flicker. Legs (v6): knees bending
+ * backward, stretched legs, soles under the ground and planted feet that slide.
  */
-import { ARM_LIMITS, CLIPS, HEAD_ANCHORS, anchorPoint, armFrontAt, armPoints, clipOf, defaultPole, elbowSide, evaluatePose, headOval, shoulderAt, ADULT, CHILD } from "../src";
+import { ARM_LIMITS, CLIPS, elbowFlexOf, HEAD_ANCHORS, anchorPoint, armFrontAt, armPoints, clipOf, defaultPole, elbowSide, evaluatePose, headOval, shoulderAt, ADULT, CHILD } from "../src";
+import { LEGS, evaluateBody, footOf, footPoint, legLength, type LowerBody, type V3 } from "../src";
 import type { Clip, Pose, PoseKey, Proportions } from "../src";
 
 export type Violation = { track: string; frame: number; side: "L" | "R"; rule: string; detail: string };
@@ -51,7 +53,7 @@ export const checkTrack = (name: string, keys: PoseKey[], frames: number, p: Pro
       const l2 = p.foreArm * (a.fore ?? 1);
       // Joint limits.
       if (!(a.bendSign !== undefined && Math.abs(a.bendSign) < 0.999) && (a.shoulder < ARM_LIMITS.shoulder[0] - 0.01 || a.shoulder > ARM_LIMITS.shoulder[1] + 0.01)) v("shoulder-range", a.shoulder.toFixed(1));
-      if (Math.abs(a.elbow) > ARM_LIMITS.elbowFlex + 0.01) v("elbow-range", a.elbow.toFixed(1));
+      if (Math.abs(a.elbow) > elbowFlexOf(a.upper) + 0.01) v("elbow-range", a.elbow.toFixed(1));
       if (a.wrist < ARM_LIMITS.wrist[0] - 0.01 || a.wrist > ARM_LIMITS.wrist[1] + 0.01) v("wrist-range", a.wrist.toFixed(1));
       // Elbow never inverted: once a pose has settled, the elbow sits on its natural side (the key's
       // pole, or down / outward by default). In motion the fold direction is checked by elbow-flip.
@@ -124,6 +126,43 @@ export const checkTrack = (name: string, keys: PoseKey[], frames: number, p: Pro
   return out;
 };
 
+const v3 = { sub: (a: V3, b: V3): V3 => ({ x: a.x - b.x, u: a.u - b.u, z: a.z - b.z }), dot: (a: V3, b: V3) => a.x * b.x + a.u * b.u + a.z * b.z };
+const len3 = (a: V3) => Math.sqrt(v3.dot(a, a));
+
+/** Leg rules over a shot (pose keys, optional walk / turn). */
+export const checkLegs = (name: string, keys: PoseKey[], frames: number, p: Proportions, opts: Parameters<typeof evaluateBody>[4] = {}): Violation[] => {
+  const out: Violation[] = [];
+  const fd = footOf(p);
+  const L = legLength(p);
+  let prev: LowerBody | undefined;
+  for (let f = 0; f <= frames; f++) {
+    const lo = evaluateBody(keys, f, FPS, p, opts).lower;
+    for (const S of ["L", "R"] as const) {
+      const leg = lo[S];
+      const v = (rule: string, detail: string) => out.push({ track: name, frame: f, side: S, rule, detail });
+      const F = { x: Math.sin(rad(leg.foot.yaw)), u: 0, z: Math.cos(rad(leg.foot.yaw)) };
+      const ax = v3.sub(leg.ankle3, leg.hip3);
+      const kh = v3.sub(leg.knee3, leg.hip3);
+      const al = len3(ax);
+      const k = v3.dot(kh, ax) / (al * al);
+      if (v3.dot({ x: kh.x - ax.x * k, u: kh.u - ax.u * k, z: kh.z - ax.z * k }, F) < -0.01) v("knee-backward", "");
+      if (al > L * LEGS.reach + 0.5) v("leg-stretch", al.toFixed(1));
+      for (const b of [-fd.heel, fd.ball, fd.toe]) {
+        const q = footPoint(p, leg.foot.ankle, leg.foot.pitch, leg.foot.yaw, 0, b, 0);
+        if (q.u < -0.5) v("sole-below-ground", q.u.toFixed(1));
+      }
+      const was = prev?.[S];
+      if (was && !leg.foot.swinging && !was.foot.swinging && leg.foot.contact >= 1 && was.foot.contact >= 1 && JSON.stringify(leg.foot.plant) === JSON.stringify(was.foot.plant)) {
+        const bp = leg.foot.pitch > 0.01 || was.foot.pitch > 0.01 ? -fd.heel : fd.ball;
+        const d = len3(v3.sub(footPoint(p, leg.foot.ankle, leg.foot.pitch, leg.foot.yaw, 0, bp, 0), footPoint(p, was.foot.ankle, was.foot.pitch, was.foot.yaw, 0, bp, 0)));
+        if (d > 0.5) v("foot-slide", `${d.toFixed(2)}px`);
+      }
+    }
+    prev = lo;
+  }
+  return out;
+};
+
 /** Every clip after every clip, plus each multi-step clip played through, for adult and child. */
 export const runAll = () => {
   const names = Object.keys(CLIPS);
@@ -141,7 +180,13 @@ export const runAll = () => {
       const len = Math.max(90, ...(c.steps ?? []).map((s) => s.at + 50));
       tracks++;
       out.push(...checkTrack(`${pn}:idle→${a}(full)`, [{ at: 0, clip: "idle" }, { at: 10, clip: a }], len, p));
+      out.push(...checkLegs(`${pn}:legs idle→${a}`, [{ at: 0, clip: "idle" }, { at: 10, clip: a }], len, p));
     }
+    // Walks (both ways, with a gesture on top), turns.
+    tracks += 3;
+    out.push(...checkLegs(`${pn}:walk`, [{ at: 0, clip: "idle" }, { at: 30, clip: "wave" }], 120, p, { walk: [{ at: 5, to: 300 }, { at: 70, to: 0 }] }));
+    out.push(...checkLegs(`${pn}:walk in place`, [{ at: 0, clip: "idle" }], 90, p, { walk: [{ at: 5, to: -400, inPlace: true }] }));
+    out.push(...checkLegs(`${pn}:turns`, [{ at: 0, clip: "idle" }, { at: 40, clip: "point" }], 140, p, { turn: [{ at: 0, yaw: 0 }, { at: 10, yaw: 1 }, { at: 60, yaw: -1 }, { at: 100, yaw: 0.4 }] }));
   }
   return { tracks, violations: out };
 };

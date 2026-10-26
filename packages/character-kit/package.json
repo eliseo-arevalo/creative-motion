@@ -22,6 +22,6 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lipsync": "bash scripts/lipsync.sh",
-    "test": "node --test test/rig.test.mjs"
+    "test": "node --test test/features.test.mjs test/legs.test.mjs test/rig.test.mjs test/hair.test.mjs test/gait.test.mjs"
   }
 }

@@ -5,24 +5,61 @@ import type { Clip } from "./types";
 const TAU = Math.PI * 2;
 
 /**
+ * One fingertip tap at frame `at` (contact frame), 0 = hovering, 1 = touching: eases in over 5
+ * frames, stays 2 frames, lifts over 4 with a small rebound past the hover point.
+ */
+export const tapCurve = (t: number, at: number) =>
+  smooth(t, at - 5, 5) - smooth(t, at + 2, 4) - 0.18 * (smooth(t, at + 4, 3) - smooth(t, at + 7, 6));
+/** The held object's answer to a tap: a short damped dip right at contact (0…1). */
+export const tapRecoil = (t: number, at: number) => (t < at - 1 ? 0 : Math.exp(-(t - at + 1) / 3.2) * Math.sin(((t - at + 1) / 4.5) * Math.PI));
+const taps = (t: number, ats: number[], f: (t: number, at: number) => number) => ats.reduce((s, at) => s + f(t, at), 0);
+/** Contact frames of the phone-tap clips (from the clip start). */
+export const PHONE_TAPS = [16, 30, 38, 58, 74] as const;
+
+/**
  * Gesture library: a base pose plus additive keyframed / procedural motion on top.
  * `t` is frames since the clip started. Layers fade in/out with the clip, and each bone reads
  * them with its own delay (wrist after elbow after shoulder), which gives overlap for free.
  */
+/**
+ * Folding the arms passes low: from wherever the hands are they first drop in front of the belly,
+ * then come up across the chest (never sweeping past the chin).
+ */
+const FOLD_LOW = {
+  ...POSES.crossedArms,
+  armL: { ...POSES.crossedArms.armL, hand: "relaxed" as const, face: "edge" as const, handDir: 10, reach: { anchor: "chest" as const, dx: 0.35, dy: 2.5 } },
+  armR: { ...POSES.crossedArms.armR, hand: "relaxed" as const, face: "edge" as const, handDir: 10, reach: { anchor: "chest" as const, dx: 0.35, dy: 2.5 } },
+};
+
+/**
+ * Scratch's way in: the elbow lifts out to the side first and the hand comes up beside the head
+ * (from the chin or cheek it would otherwise squeeze past the shoulder, folded flat).
+ */
+const SCRATCH_UP = {
+  ...POSES.scratch,
+  armR: { ...POSES.scratch.armR, face: "edge" as const, handDir: -165, reach: { anchor: "chest" as const, dx: 2.4, dy: -2.6 } },
+};
+
+/** On the way to the cheek: the hand rises in front of the chest, upper arm hanging, elbow down at the side. */
+const CHEEK_UP = {
+  ...POSES.cheek,
+  armR: { ...POSES.cheek.armR, upper: 1, handDir: -150, reach: { anchor: "chest" as const, dx: 0.8, dy: -0.3 } },
+};
+
 export const CLIPS = {
   idle: {
     pose: POSES.rest,
     antic: 0.06,
-    layer: (t) => ({ x: drift(t, 150, 3), lean: drift(t + 40, 170, 0.6), neck: drift(t + 10, 130, 0.7), head: drift(t + 70, 110, 1.1) }),
+    layer: (t) => ({ x: drift(t, 150, 3), weight: drift(t + 90, 240, 0.22), lean: drift(t + 40, 170, 0.6), neck: drift(t + 10, 130, 0.7), head: drift(t + 70, 110, 1.1) }),
   },
-  /** ~2 waves a second; the wrist trails the forearm. */
+  /** ~2 waves a second, swung from the elbow: the forearm rocks, the wrist stays almost straight. */
   wave: {
     pose: POSES.wave,
     layer: (t) => {
       const ph = ((t - 6) / 15) * TAU;
       const w = smooth(t, 4, 8);
       return {
-        armR: { shoulder: Math.sin(ph - 0.4) * 3 * w, elbow: Math.sin(ph) * 16 * w, wrist: Math.sin(ph - 1.1) * 22 * w },
+        armR: { shoulder: Math.sin(ph - 0.4) * 4 * w, elbow: Math.sin(ph) * 22 * w, wrist: Math.sin(ph - 1.2) * 4 * w },
         head: Math.sin(ph - 1.6) * 1.4 * w,
         x: Math.sin(ph * 0.5) * 1.5 * w,
       };
@@ -43,7 +80,8 @@ export const CLIPS = {
   },
   /** Scratching the head (fast wrist/forearm jitter). */
   scratch: {
-    pose: POSES.scratch,
+    pose: SCRATCH_UP,
+    steps: [{ at: 7, pose: POSES.scratch, antic: 0 }],
     layer: (t) => {
       const w = smooth(t, 8, 6);
       return { armR: { elbow: Math.sin(t * 1.25) * 6 * w, wrist: Math.sin(t * 1.25 + 1) * 14 * w }, head: Math.sin(t * 1.25 + 2) * 0.6 * w + drift(t, 70, 1) };
@@ -122,7 +160,8 @@ export const CLIPS = {
   },
   /** Cheek in hand; slow head drift and a finger tap on the cheek. */
   cheek: {
-    pose: POSES.cheek,
+    pose: CHEEK_UP,
+    steps: [{ at: 8, pose: POSES.cheek, antic: 0 }],
     layer: (t) => ({ head: drift(t, 110, 1.6), neck: drift(t + 40, 140, 0.6), armR: { wrist: Math.sin(t / 6) * 2.5 * smooth(t, 20, 10) } }),
   },
   /**
@@ -154,6 +193,81 @@ export const CLIPS = {
     layer: (t) => {
       const pop = smooth(t, 2, 5) - smooth(t, 8, 10);
       return { shrug: pop * 6, head: pop * 2 + drift(t, 90, 0.8), armL: { elbow: pop * 6 }, armR: { elbow: pop * 6 } };
+    },
+  },
+  /**
+   * Using the phone (screen toward her, back to camera): the left index taps the screen behind the
+   * phone's edge (approach, contact, small rebound); the phone dips a little on each tap.
+   */
+  phoneTap: {
+    pose: POSES.phoneCheck,
+    antic: 0.06,
+    layer: (t) => {
+      const c = taps(t, [...PHONE_TAPS], tapCurve);
+      const r = taps(t, [...PHONE_TAPS], tapRecoil);
+      return {
+        armL: { dx: 0.34 * (1 - c), dy: -0.2 * (1 - c), wrist: -c * 4 },
+        armR: { dy: r * 0.05, dx: -r * 0.02, wrist: drift(t, 80, 1.5) },
+        head: drift(t, 110, 1) + r * 0.4,
+        neck: drift(t + 30, 150, 0.5),
+      };
+    },
+  },
+  /** Showing the phone to the camera: the right index taps the screen in front of it. */
+  phoneTapShow: {
+    pose: POSES.phoneShow,
+    antic: 0.06,
+    layer: (t) => {
+      const c = taps(t, [...PHONE_TAPS], tapCurve);
+      const r = taps(t, [...PHONE_TAPS], tapRecoil);
+      return {
+        armR: { dx: 0.26 * (1 - c), dy: -0.26 * (1 - c), wrist: c * 3 },
+        armL: { dy: r * 0.05, dx: r * 0.02 },
+        head: drift(t, 110, 1),
+      };
+    },
+  },
+  /** Arms crossed, settling in with a small "hmph" (shoulders up, lean back). */
+  crossedArms: {
+    pose: FOLD_LOW,
+    antic: 0.1,
+    steps: [{ at: 9, pose: POSES.crossedArms, antic: 0 }],
+    layer: (t) => {
+      const hmph = smooth(t, 8, 5) - smooth(t, 14, 12);
+      return { shrug: hmph * 7, lean: -hmph * 0.8 + drift(t, 140, 0.4), head: -hmph * 2 + drift(t, 90, 1.2), x: drift(t, 170, 1.5) };
+    },
+  },
+  /** Arms crossed, shaking the head "no". */
+  refuse: {
+    pose: FOLD_LOW,
+    antic: 0.1,
+    steps: [{ at: 9, pose: POSES.crossedArms, antic: 0 }],
+    layer: (t) => {
+      const no = smooth(t, 6, 6) * (1 - smooth(t, 40, 12));
+      return { head: Math.sin(t / 2.6) * 5 * no + drift(t, 90, 1), neck: Math.sin(t / 2.6 - 0.7) * 1.5 * no, lean: drift(t, 120, 0.4) };
+    },
+  },
+  /** Finger wag "no, no": the wrist swings side to side (~3 per second), the head shakes along. */
+  wagNo: {
+    pose: POSES.wagNo,
+    antic: 0.12,
+    layer: (t) => {
+      const w = smooth(t, 6, 5);
+      const ph = (Math.max(0, t - 6) / 10.5) * TAU;
+      return {
+        armR: { wrist: Math.sin(ph) * 20 * w, elbow: Math.sin(ph - 0.7) * 3 * w, roll: Math.sin(ph - 0.3) * 10 * w },
+        head: Math.sin(ph * 0.5) * 3 * w + drift(t, 80, 0.8),
+        neck: Math.sin(ph * 0.5 - 0.6) * 0.8 * w,
+      };
+    },
+  },
+  /** Handshake: three pumps that die down, then holds the grip. Same timing for both people. */
+  handshake: {
+    pose: POSES.handshake,
+    antic: 0.08,
+    layer: (t) => {
+      const pump = Math.sin((Math.max(0, t - 12) / 9) * TAU) * smooth(t, 12, 3) * (1 - smooth(t, 34, 9));
+      return { armR: { dy: pump * 0.2, wrist: -pump * 5 }, y: pump * 1.5, head: pump * 1 + drift(t, 90, 0.8) };
     },
   },
 } satisfies Record<string, Clip>;
