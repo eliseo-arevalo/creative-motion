@@ -1,0 +1,42 @@
+{
+  "dir": "reel",
+  "manifest": "src/reel/voManifest.ts",
+  "music": {
+    "seconds": 34
+  },
+  "sfx": [
+    "sfx-door-bell",
+    "sfx-scanner",
+    "sfx-whoosh",
+    "sfx-papers",
+    "sfx-coins",
+    "sfx-scribble",
+    "sfx-crumple",
+    "sfx-pop",
+    "sfx-positive",
+    "sfx-page",
+    "sfx-shutter",
+    "sfx-slide-stop",
+    "sfx-soft-click"
+  ],
+  "vo": {
+    "vendes": "Atendés todo el día: cobrás, das vuelto, fiás...",
+    "cuantoA": "¿Cuánto gané hoy?",
+    "cuantoB": "¿Y quién me debe?",
+    "sale": "Con {name}, registrás cada venta en segundos.",
+    "fiado": "Si fiás, queda registrado quién te debe.",
+    "total": "Al cerrar, sabés cuánto vendiste.",
+    "control": "Cobrá. Fiá. Tené todo claro.",
+    "descarga": "Descargá {name} en la tienda."
+  },
+  "fit": {
+    "vendes": 105,
+    "cuantoA": 37,
+    "cuantoB": 36,
+    "sale": 84,
+    "fiado": 79,
+    "total": 74,
+    "control": 73,
+    "descarga": 63
+  }
+}

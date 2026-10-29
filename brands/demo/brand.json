@@ -1,0 +1,10 @@
+{
+  "id": "demo",
+  "name": "Demo App",
+  "pronunciation": "Demo App",
+  "tagline": "your sales notebook",
+  "handle": "@demoapp",
+  "storeUrl": "https://example.com/get-the-app",
+  "storeLabel": "Get it on the store",
+  "voiceLanguage": "es"
+}

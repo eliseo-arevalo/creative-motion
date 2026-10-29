@@ -1,0 +1,31 @@
+{
+  "name": "@eliseo-arevalo/templates",
+  "version": "0.1.0",
+  "description": "Generic Remotion video templates (vertical promo, problem/solution reel, character sketch, end card) built on motion-kit and character-kit",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "@eliseo-arevalo/character-kit": "*",
+    "@eliseo-arevalo/motion-kit": "*",
+    "@remotion/cli": "4.0.529",
+    "@remotion/google-fonts": "4.0.529",
+    "qrcode-generator": "2.0.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.529"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "audio": "node scripts/audio/build.mjs",
+    "master": "bash scripts/audio/master.sh",
+    "add-audio": "bash scripts/audio/add-audio.sh",
+    "render": "node scripts/render.mjs",
+    "brand": "node scripts/use-brand.mjs"
+  }
+}

@@ -1,23 +1,30 @@
 {
   "name": "creative-motion",
   "version": "0.1.0",
-  "description": "Kit público Remotion: motion-kit + screen-kit brand-agnostic + plantilla de brand + ejemplos",
+  "description": "Open Remotion toolkit: motion-kit, screen-kit, character-kit, brand-neutral templates, audio pipeline and docs",
   "private": true,
   "license": "UNLICENSED",
   "workspaces": [
     "packages/*",
-    "examples/*"
+    "examples/*",
+    "templates"
   ],
   "scripts": {
     "dev": "npm run studio -w @eliseo-arevalo/demo-wipes",
     "studio:demo-wipes": "npm run studio -w @eliseo-arevalo/demo-wipes",
     "build:demo-wipes": "npm run build -w @eliseo-arevalo/demo-wipes",
-    "lint": "tsc -p packages/motion-kit && tsc -p examples/demo-wipes && tsc -p packages/screen-kit && tsc -p examples/demo-usability",
+    "lint": "npm run typecheck",
     "studio:demo-usability": "npm run studio -w @eliseo-arevalo/demo-usability",
     "capture:demo-usability": "npm run capture -w @eliseo-arevalo/demo-usability --",
     "render:demo-usability": "npm run render -w @eliseo-arevalo/demo-usability --",
     "lint:demo-usability": "npm run lint -w @eliseo-arevalo/demo-usability",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test -w @eliseo-arevalo/character-kit",
+    "smoke": "bash scripts/smoke.sh",
+    "audio": "npm run audio -w @eliseo-arevalo/templates --",
+    "studio": "npm run studio -w @eliseo-arevalo/templates",
+    "render": "npm run render -w @eliseo-arevalo/templates --",
+    "master": "npm run master -w @eliseo-arevalo/templates --"
   },
   "engines": {
     "node": ">=18"

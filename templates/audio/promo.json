@@ -1,0 +1,18 @@
+{
+  "dir": "promo",
+  "manifest": "src/promo/voManifest.ts",
+  "music": { "seconds": 75 },
+  "sfx": ["sfx-wipe", "sfx-notebook", "sfx-coins", "sfx-balance", "sfx-soft-click"],
+  "vo": {
+    "hook": "Que el papeleo no te robe tiempo.",
+    "problem": "Dejá de confiar en tu memoria.",
+    "sale": "Armá el ticket con tus productos y cobrá en un toque.",
+    "fiado": "¿Te piden fiado? Elegís al cliente y queda anotado.",
+    "abono": "Seguí atendiendo. Lo que recibís queda registrado.",
+    "gasto": "¿Compraste mercadería? Anotá el gasto, con su fecha y su proveedor.",
+    "proveedores": "Y tené a tus proveedores a mano, para saber a quién le comprás más.",
+    "resumen": "Ventas, fiados y gastos, en un solo lugar.",
+    "parado": "Así sabés cómo vas.",
+    "end": "Conocé {name}."
+  }
+}

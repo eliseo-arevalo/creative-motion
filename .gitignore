@@ -13,3 +13,10 @@ build/
 whisper.cpp
 *.log
 .remotion/
+
+# templates: generated audio, caches and renders
+templates/public/audio/
+templates/.cache/
+templates/out/
+# real brands live in private repos or private-* folders, never here
+brands/private-*/

@@ -1,0 +1,33 @@
+{
+  "dir": "sketch",
+  "manifest": "src/sketch/voManifest.ts",
+  "music": {
+    "seconds": 22
+  },
+  "lipsync": "src/sketch/lipsync.json",
+  "sfx": [
+    "sfx-door-bell",
+    "sfx-papers",
+    "sfx-ticks",
+    "sfx-pop",
+    "sfx-whoosh",
+    "sfx-coins",
+    "sfx-ringtone",
+    "sfx-giggle",
+    "sfx-scratch",
+    "sfx-cricket",
+    "sfx-rewind",
+    "sfx-ding",
+    "sfx-soft-click"
+  ],
+  "vo": {
+    "anoto": "Sí, sí… ahorita lo apunto, va.",
+    "remate": "¿Y esos tres dólares… de quién eran?",
+    "listo": "¡Listo, apuntado!"
+  },
+  "fit": {
+    "anoto": 67,
+    "remate": 73,
+    "listo": 42
+  }
+}

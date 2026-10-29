@@ -1,0 +1,6 @@
+{
+  "dir": "endcard",
+  "music": { "seconds": 6 },
+  "sfx": ["sfx-pop", "sfx-ding"],
+  "vo": {}
+}
